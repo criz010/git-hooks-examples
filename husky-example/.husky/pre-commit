@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "Running pre-commit checks with Husky..."
+
+# Check for common issues
+if git diff --cached | grep -E "console\.log|debugger" > /dev/null; then
+    echo "ERROR: Found console.log or debugger statement"
+    exit 1
+fi
+
+echo "SUCCESS: Pre-commit checks passed!"

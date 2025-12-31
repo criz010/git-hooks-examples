@@ -1,0 +1,60 @@
+#!/bin/bash
+# pre-commit hook
+# Runs before a commit is created
+
+echo "Running pre-commit checks..."
+
+# Check for System.out.println in Java files
+if git diff --cached --name-only | grep "\.java$" > /dev/null; then
+    if git diff --cached | grep -E "^\+.*System\.out\.println" > /dev/null; then
+        echo "ERROR: Found System.out.println in Java files."
+        echo "Please use a proper logging framework instead."
+        exit 1
+    fi
+fi
+
+# Check for console.log in JavaScript files
+if git diff --cached --name-only | grep "\.js$" > /dev/null; then
+    if git diff --cached | grep -E "^\+.*console\.log" > /dev/null; then
+        echo "WARNING: Found console.log in JavaScript files."
+        echo "Consider using a proper logging framework."
+        # Uncomment to make this a hard failure:
+        # exit 1
+    fi
+fi
+
+# Check for TODO or FIXME comments (warning only)
+if git diff --cached | grep -E "^\+.*\b(TODO|FIXME)\b" > /dev/null; then
+    echo "WARNING: Found TODO or FIXME in staged changes."
+    echo "Consider resolving these before committing."
+    # This is just a warning, not blocking the commit
+fi
+
+# Check for files larger than 5MB
+large_files=$(git diff --cached --name-only | while read file; do
+    if [ -f "$file" ]; then
+        size=$(wc -c < "$file")
+        if [ $size -gt 5242880 ]; then  # 5MB in bytes
+            echo "$file ($(numfmt --to=iec-i --suffix=B $size))"
+        fi
+    fi
+done)
+
+if [ -n "$large_files" ]; then
+    echo "ERROR: The following files are larger than 5MB:"
+    echo "$large_files"
+    echo "Consider using Git LFS for large files."
+    exit 1
+fi
+
+# Check for trailing whitespace
+if git diff --cached --check > /dev/null 2>&1; then
+    echo "SUCCESS: All pre-commit checks passed!"
+else
+    echo "ERROR: Found trailing whitespace or other issues."
+    echo "Run 'git diff --cached --check' for details."
+    exit 1
+fi
+
+echo "SUCCESS: All pre-commit checks passed!"
+exit 0

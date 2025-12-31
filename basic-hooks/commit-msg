@@ -1,0 +1,53 @@
+#!/bin/bash
+# commit-msg hook
+# Validates commit message format
+
+commit_msg_file=$1
+commit_msg=$(cat "$commit_msg_file")
+
+# Define the pattern for Conventional Commits
+# Format: type(scope): subject
+# Example: feat(auth): add login endpoint
+pattern="^(feat|fix|docs|style|refactor|perf|test|chore|build|ci)(\(.+\))?: .{1,}"
+
+if ! echo "$commit_msg" | grep -qE "$pattern"; then
+    echo "ERROR: Invalid commit message format!"
+    echo ""
+    echo "Commit message must follow Conventional Commits:"
+    echo "  <type>(<scope>): <subject>"
+    echo ""
+    echo "Types: feat, fix, docs, style, refactor, perf, test, chore, build, ci"
+    echo "Scope is optional but recommended"
+    echo ""
+    echo "Examples:"
+    echo "  feat(auth): add JWT authentication"
+    echo "  fix(api): resolve null pointer exception"
+    echo "  docs: update README with installation steps"
+    echo ""
+    echo "Your message:"
+    echo "  $commit_msg"
+    exit 1
+fi
+
+# Check subject line length
+subject=$(echo "$commit_msg" | head -n1)
+if [ ${#subject} -gt 72 ]; then
+    echo "WARNING: Subject line is longer than 72 characters (${#subject} chars)"
+    echo "Consider shortening it for better readability"
+    echo "Git interfaces may truncate long subject lines"
+fi
+
+# Check for capitalized subject (after the type)
+if echo "$subject" | grep -qE "^[a-z]+(\([^)]+\))?: [A-Z]"; then
+    echo "WARNING: Subject should start with lowercase after the colon"
+    echo "Good: 'feat(auth): add login endpoint'"
+    echo "Bad:  'feat(auth): Add login endpoint'"
+fi
+
+# Check for period at end of subject
+if echo "$subject" | grep -qE "\.$"; then
+    echo "WARNING: Subject line should not end with a period"
+fi
+
+echo "SUCCESS: Commit message is valid"
+exit 0

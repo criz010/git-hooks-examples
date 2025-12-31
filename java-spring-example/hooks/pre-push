@@ -1,0 +1,53 @@
+#!/bin/bash
+# pre-push hook for Java/Spring Boot projects
+
+echo "Running Spring Boot pre-push checks..."
+
+# Get the current branch
+current_branch=$(git symbolic-ref --short HEAD)
+
+# Prevent direct pushes to main/master
+protected_branches="^(main|master|develop)$"
+if echo "$current_branch" | grep -qE "$protected_branches"; then
+    echo "ERROR: Direct pushes to $current_branch are not allowed!"
+    echo "Please create a feature branch and open a pull request."
+    echo ""
+    echo "Workflow:"
+    echo "  git checkout -b feature/your-feature-name"
+    echo "  git push origin feature/your-feature-name"
+    echo ""
+    echo "To bypass (not recommended): git push --no-verify"
+    exit 1
+fi
+
+# Check if Maven is available
+if ! command -v mvn &> /dev/null; then
+    echo "WARNING: Maven is not installed. Skipping tests."
+    exit 0
+fi
+
+# Run tests
+echo "Running test suite..."
+mvn -q clean test
+
+if [ $? -ne 0 ]; then
+    echo "ERROR: Tests failed!"
+    echo "Please fix the failing tests before pushing."
+    echo ""
+    echo "Run 'mvn test' for detailed output."
+    echo ""
+    echo "To bypass (not recommended): git push --no-verify"
+    exit 1
+fi
+
+echo "SUCCESS: All tests passed!"
+
+# Optional: Check code coverage (uncomment if you have JaCoCo configured)
+# echo "Checking code coverage..."
+# mvn jacoco:check
+# if [ $? -ne 0 ]; then
+#     echo "WARNING: Code coverage is below threshold"
+# fi
+
+echo "SUCCESS: All pre-push checks passed!"
+exit 0

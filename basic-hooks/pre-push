@@ -1,0 +1,90 @@
+#!/bin/bash
+# pre-push hook
+# Runs before pushing to remote repository
+
+echo "Running pre-push checks..."
+
+# Get the current branch
+current_branch=$(git symbolic-ref --short HEAD)
+
+# Prevent direct pushes to main/master
+protected_branches="^(main|master)$"
+if echo "$current_branch" | grep -qE "$protected_branches"; then
+    echo "ERROR: Direct pushes to $current_branch are not allowed!"
+    echo "Please create a feature branch and open a pull request."
+    echo ""
+    echo "To bypass this check (not recommended):"
+    echo "  git push --no-verify"
+    exit 1
+fi
+
+# Check if there are any commits to push
+if git rev-parse @{u} > /dev/null 2>&1; then
+    commits_to_push=$(git log @{u}..HEAD --oneline)
+    if [ -z "$commits_to_push" ]; then
+        echo "No commits to push"
+        exit 0
+    fi
+    
+    commit_count=$(echo "$commits_to_push" | wc -l)
+    echo "Pushing $commit_count commit(s):"
+    echo "$commits_to_push"
+    echo ""
+fi
+
+# Run tests if this is a Java project
+if [ -f "pom.xml" ]; then
+    echo "Maven project detected. Running tests..."
+    
+    # Check if Maven is available
+    if ! command -v mvn &> /dev/null; then
+        echo "WARNING: Maven is not installed. Skipping tests."
+        echo "Install Maven to enable automatic testing before push."
+    else
+        mvn -q test
+        if [ $? -ne 0 ]; then
+            echo "ERROR: Tests failed. Cannot push."
+            echo "Please fix the failing tests before pushing."
+            echo ""
+            echo "To bypass this check (not recommended):"
+            echo "  git push --no-verify"
+            exit 1
+        fi
+        echo "SUCCESS: All tests passed!"
+    fi
+elif [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then
+    echo "Gradle project detected. Running tests..."
+    
+    # Check if Gradle is available
+    if ! command -v gradle &> /dev/null && ! [ -f "gradlew" ]; then
+        echo "WARNING: Gradle is not installed. Skipping tests."
+    else
+        if [ -f "gradlew" ]; then
+            ./gradlew test
+        else
+            gradle test
+        fi
+        
+        if [ $? -ne 0 ]; then
+            echo "ERROR: Tests failed. Cannot push."
+            exit 1
+        fi
+        echo "SUCCESS: All tests passed!"
+    fi
+elif [ -f "package.json" ]; then
+    echo "Node.js project detected."
+    
+    # Check if npm test script exists
+    if grep -q '"test"' package.json; then
+        echo "Running npm test..."
+        npm test
+        if [ $? -ne 0 ]; then
+            echo "ERROR: Tests failed. Cannot push."
+            exit 1
+        fi
+        echo "SUCCESS: All tests passed!"
+    fi
+fi
+
+echo "SUCCESS: All pre-push checks passed!"
+exit 0

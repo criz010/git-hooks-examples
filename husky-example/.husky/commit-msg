@@ -1,0 +1,17 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+commit_msg_file=$1
+commit_msg=$(cat "$commit_msg_file")
+
+# Validate Conventional Commits format
+pattern="^(feat|fix|docs|style|refactor|perf|test|chore|build|ci)(\(.+\))?: .+"
+
+if ! echo "$commit_msg" | grep -qE "$pattern"; then
+    echo "ERROR: Invalid commit message format!"
+    echo "Must follow: <type>(<scope>): <subject>"
+    echo "Example: feat(api): add new endpoint"
+    exit 1
+fi
+
+echo "SUCCESS: Commit message is valid"

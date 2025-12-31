@@ -1,0 +1,46 @@
+#!/bin/bash
+# commit-msg hook for Java/Spring Boot projects
+
+commit_msg_file=$1
+commit_msg=$(cat "$commit_msg_file")
+
+# Conventional Commits pattern
+pattern="^(feat|fix|docs|style|refactor|perf|test|chore|build|ci)(\(.+\))?: .{1,}"
+
+if ! echo "$commit_msg" | grep -qE "$pattern"; then
+    echo "ERROR: Invalid commit message format!"
+    echo ""
+    echo "Commit message must follow Conventional Commits:"
+    echo "  <type>(<scope>): <subject>"
+    echo ""
+    echo "Types:"
+    echo "  feat     - New feature"
+    echo "  fix      - Bug fix"
+    echo "  docs     - Documentation changes"
+    echo "  style    - Code style changes (formatting, etc.)"
+    echo "  refactor - Code refactoring"
+    echo "  perf     - Performance improvements"
+    echo "  test     - Adding or updating tests"
+    echo "  chore    - Maintenance tasks"
+    echo "  build    - Build system changes"
+    echo "  ci       - CI/CD changes"
+    echo ""
+    echo "Examples:"
+    echo "  feat(api): add user registration endpoint"
+    echo "  fix(auth): resolve JWT token expiration issue"
+    echo "  docs: update API documentation"
+    echo ""
+    echo "Your message:"
+    echo "  $commit_msg"
+    exit 1
+fi
+
+# Check subject line length
+subject=$(echo "$commit_msg" | head -n1)
+if [ ${#subject} -gt 72 ]; then
+    echo "WARNING: Subject line is longer than 72 characters"
+    echo "Consider shortening it for better readability"
+fi
+
+echo "SUCCESS: Commit message is valid"
+exit 0

@@ -1,0 +1,76 @@
+# Pre-commit framework configuration for Java projects
+# See https://pre-commit.com for more information
+
+repos:
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      # File quality checks
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--safe]
+      - id: check-xml
+      - id: check-json
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: detect-private-key
+      
+      # Java specific
+      - id: check-case-conflict
+
+  # Local custom hooks for Java/Maven
+  - repo: local
+    hooks:
+      # Prevent System.out.println
+      - id: no-println
+        name: No System.out.println
+        entry: 'System\.out\.println'
+        language: pygrep
+        types: [java]
+        
+      # Prevent printStackTrace
+      - id: no-printstacktrace
+        name: No printStackTrace
+        entry: '\.printStackTrace\(\)'
+        language: pygrep
+        types: [java]
+        
+      # Maven compile check
+      - id: maven-compile
+        name: Maven Compile Check
+        entry: bash -c 'mvn -q compile'
+        language: system
+        types: [java]
+        pass_filenames: false
+        
+      # Checkstyle
+      - id: checkstyle
+        name: Maven Checkstyle
+        entry: bash -c 'mvn -q checkstyle:check'
+        language: system
+        types: [java]
+        pass_filenames: false
+        
+      # Protect main branch
+      - id: protect-main
+        name: Protect Main Branch
+        entry: bash -c 'branch=$(git symbolic-ref --short HEAD); if [[ "$branch" == "main" || "$branch" == "master" ]]; then echo "Direct commits to main/master not allowed"; exit 1; fi'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [commit]
+        
+  # Pre-push hooks
+  - repo: local
+    hooks:
+      # Run tests before push
+      - id: maven-test
+        name: Maven Tests
+        entry: bash -c 'mvn -q test'
+        language: system
+        pass_filenames: false
+        stages: [push]

@@ -1,0 +1,100 @@
+#!/bin/bash
+# pre-commit hook for Java/Spring Boot projects
+
+echo "Running Spring Boot pre-commit checks..."
+
+# Check if Maven is available
+if ! command -v mvn &> /dev/null; then
+    echo "ERROR: Maven is not installed."
+    echo "Please install Maven to use this hook."
+    exit 1
+fi
+
+# Check for System.out.println in Java files
+if git diff --cached --name-only | grep "\.java$" > /dev/null; then
+    echo "Checking for System.out.println..."
+    
+    if git diff --cached | grep -E "^\+.*System\.out\.println" > /dev/null; then
+        echo "ERROR: Found System.out.println in Java files."
+        echo "Please use a proper logging framework (SLF4J/Logback) instead."
+        echo ""
+        echo "Example:"
+        echo "  private static final Logger logger = LoggerFactory.getLogger(YourClass.class);"
+        echo "  logger.info(\"Your message\");"
+        exit 1
+    fi
+fi
+
+# Check for printStackTrace in Java files
+if git diff --cached --name-only | grep "\.java$" > /dev/null; then
+    echo "Checking for printStackTrace..."
+    
+    if git diff --cached | grep -E "^\+.*\.printStackTrace\(\)" > /dev/null; then
+        echo "ERROR: Found printStackTrace() in Java files."
+        echo "Please use proper logging instead."
+        exit 1
+    fi
+fi
+
+# Check for sensitive data in application properties
+sensitive_patterns=(
+    "password="
+    "secret="
+    "api[._-]?key="
+    "token="
+    "credentials="
+    "jdbc:.*://.*:.*@"
+)
+
+for pattern in "${sensitive_patterns[@]}"; do
+    if git diff --cached --name-only | grep "application.*\.properties\|application.*\.yml" > /dev/null; then
+        if git diff --cached | grep -iE "^\+.*$pattern" > /dev/null; then
+            echo "ERROR: Potential sensitive data found in application properties!"
+            echo "Pattern matched: $pattern"
+            echo ""
+            echo "Please:"
+            echo "  1. Remove sensitive data from properties files"
+            echo "  2. Use environment variables instead"
+            echo "  3. Or use Spring Boot's secrets management"
+            exit 1
+        fi
+    fi
+done
+
+# Run Checkstyle
+echo "Running Checkstyle..."
+mvn -q checkstyle:check
+
+if [ $? -ne 0 ]; then
+    echo "ERROR: Checkstyle found issues."
+    echo "Please fix the code style issues before committing."
+    echo "Run 'mvn checkstyle:check' for detailed output."
+    exit 1
+fi
+
+# Check if pom.xml was modified
+if git diff --cached --name-only | grep -q "pom\.xml"; then
+    echo "pom.xml was modified. Validating..."
+    mvn -q validate
+    if [ $? -ne 0 ]; then
+        echo "ERROR: pom.xml validation failed"
+        exit 1
+    fi
+    echo "pom.xml validation passed"
+fi
+
+# Quick compile check (only staged files)
+echo "Running quick compile check..."
+staged_java_files=$(git diff --cached --name-only --diff-filter=ACM | grep "\.java$")
+
+if [ -n "$staged_java_files" ]; then
+    mvn -q compile
+    if [ $? -ne 0 ]; then
+        echo "ERROR: Compilation failed"
+        echo "Please fix compilation errors before committing."
+        exit 1
+    fi
+fi
+
+echo "SUCCESS: All pre-commit checks passed!"
+exit 0

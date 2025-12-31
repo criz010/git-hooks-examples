@@ -1,0 +1,16 @@
+{
+  "name": "git-hooks-husky-example",
+  "version": "1.0.0",
+  "description": "Example project using Husky for Git hooks management",
+  "scripts": {
+    "prepare": "husky install",
+    "test": "echo 'Running tests...' && exit 0",
+    "lint": "echo 'Running linter...' && exit 0"
+  },
+  "keywords": ["git-hooks", "husky", "example"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "husky": "^8.0.3"
+  }
+}
